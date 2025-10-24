@@ -290,10 +290,13 @@ func verifyCircuit(
 		UseSpark: useSpark,
 	}
 
+	log.Printf("Compiling circuit...")
 	ccs, err := frontend.Compile(ecc.BN254.ScalarField(), r1cs.NewBuilder, &circuit)
 	if err != nil {
 		log.Fatalf("Failed to compile circuit: %v", err)
 	}
+	log.Printf("Circuit compiled")
+
 	if buildOps.OutputCcsPath != "" {
 		ccsFile, err := os.Create(buildOps.OutputCcsPath)
 		if err != nil {
@@ -437,20 +440,27 @@ func verifyCircuit(
 		UseSpark: useSpark,
 	}
 
+	log.Printf("Creating witness...")
 	witness, _ := frontend.NewWitness(&assignment, ecc.BN254.ScalarField())
+	log.Printf("Witness created")
 	publicWitness, _ := witness.Public()
+	log.Printf("Public witness created")
 
 	opts := []backend.ProverOption{
 		backend.WithSolverOptions(solver.WithHints(utilities.IndexOf)),
 		backend.WithIcicleAcceleration(),
 	}
 
+	log.Printf("Proving...")
 	proof, _ := groth16.Prove(ccs, *pk, witness, opts...)
+	log.Printf("Proof generated")
+	log.Printf("Verifying proof...")
 	err = groth16.Verify(proof, *vk, publicWitness)
 	if err != nil {
 		log.Printf("Failed to verify proof: %v", err)
 		return err
 	}
+	log.Printf("Proof verified")
 	return nil
 }
 
