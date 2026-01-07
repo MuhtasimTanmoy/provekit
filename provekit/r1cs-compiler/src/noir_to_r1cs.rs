@@ -233,6 +233,7 @@ impl NoirToR1CSCompiler {
     pub fn add_circuit(&mut self, circuit: &Circuit<NoirElement>) -> Result<()> {
         // Read-only memory blocks (used for building the memory lookup constraints at
         // the end)
+
         let mut memory_blocks: BTreeMap<usize, MemoryBlock> = BTreeMap::new();
         // Mapping the log of the range size k to the vector of witness indices that
         // are to be constrained within the range [0..2^k].
@@ -241,8 +242,12 @@ impl NoirToR1CSCompiler {
         // (input, input, output) tuples for AND and XOR operations.
         // Inputs may be either constants or R1CS witnesses.
         // Outputs are always R1CS witnesses.
+        // General ops from Noir blackbox calls (may be >8 bits, need decomposition)
         let mut and_ops = vec![];
         let mut xor_ops = vec![];
+        // Byte-level ops from SHA256 (exactly 8 bits, no decomposition needed)
+        let mut and_ops_byte = vec![];
+        let mut xor_ops_byte = vec![];
 
         let mut sha256_compression_ops = vec![];
         let mut poseidon2_ops = vec![];
@@ -455,17 +460,23 @@ impl NoirToR1CSCompiler {
         });
 
         // For the SHA256 compression operations, add the appropriate constraints.
+        // SHA256 uses byte-level ops, so pass the byte-level vectors.
         add_sha256_compression(
             self,
-            &mut and_ops,
-            &mut xor_ops,
+            &mut and_ops_byte,
+            &mut xor_ops_byte,
             &mut range_checks,
             sha256_compression_ops,
         );
 
-        // For the AND and XOR operations, add the appropriate constraints.
-        add_binop_constraints(self, BinOp::And, and_ops);
-        add_binop_constraints(self, BinOp::Xor, xor_ops);
+        // For general AND and XOR operations (from Noir blackbox), need decomposition.
+        add_binop_constraints(self, BinOp::And, and_ops, false);
+        add_binop_constraints(self, BinOp::Xor, xor_ops, false);
+
+        // For byte-level AND and XOR operations (from SHA256), no decomposition needed.
+        add_binop_constraints(self, BinOp::And, and_ops_byte, true);
+        add_binop_constraints(self, BinOp::Xor, xor_ops_byte, true);
+
         // For the Poseidon2 permutation operation.
         add_poseidon2_permutation(self, poseidon2_ops);
 
