@@ -143,8 +143,8 @@ Total Allocations   | 77.8k
 --------------------------------------------------
 
 ==========================================================
-Benchmark Loop Completed.
 Multi Run Benchmarks for Different Hash Functions with hyperfine:
+==========================================================
 
 
 ⚒  STAGE 1: Artifact Preparation (PKP/PKV Generation)
