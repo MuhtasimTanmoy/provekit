@@ -1,5 +1,6 @@
 use {
     crate::{
+        hash::HashScheme,
         noir_proof_scheme::NoirProofScheme,
         whir_r1cs::WhirR1CSScheme,
         witness::{NoirWitnessGenerator, SplitWitnessBuilders},
@@ -11,16 +12,17 @@ use {
 
 /// A prover for a Noir Proof Scheme
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Prover {
+#[serde(bound = "")]
+pub struct Prover<H: HashScheme> {
     pub program:                Program<NoirElement>,
     pub r1cs:                   R1CS,
     pub split_witness_builders: SplitWitnessBuilders,
     pub witness_generator:      NoirWitnessGenerator,
-    pub whir_for_witness:       WhirR1CSScheme,
+    pub whir_for_witness:       WhirR1CSScheme<H>,
 }
 
-impl Prover {
-    pub fn from_noir_proof_scheme(noir_proof_scheme: NoirProofScheme) -> Self {
+impl<H: HashScheme> Prover<H> {
+    pub fn from_noir_proof_scheme(noir_proof_scheme: NoirProofScheme<H>) -> Self {
         Self {
             program:                noir_proof_scheme.program,
             r1cs:                   noir_proof_scheme.r1cs,

@@ -6,6 +6,7 @@ use {
     anyhow::{ensure, Context as _, Result},
     noirc_artifacts::program::ProgramArtifact,
     provekit_common::{
+        hash::{HashScheme, HashType},
         utils::PrintAbi,
         witness::{NoirWitnessGenerator, WitnessBuilder},
         NoirProofScheme, WhirR1CSScheme,
@@ -24,7 +25,7 @@ pub trait NoirProofSchemeBuilder {
         Self: Sized;
 }
 
-impl NoirProofSchemeBuilder for NoirProofScheme {
+impl<H: HashScheme> NoirProofSchemeBuilder for NoirProofScheme<H> {
     #[instrument(fields(size = path.as_ref().metadata().map(|m| m.len()).ok()))]
     fn from_file(path: impl AsRef<Path> + std::fmt::Debug) -> Result<Self> {
         let file = File::open(path).context("while opening Noir program")?;
@@ -100,6 +101,7 @@ mod tests {
         crate::NoirProofSchemeBuilder,
         ark_std::One,
         provekit_common::{
+            hash::Skyscraper,
             witness::{ConstantTerm, SumTerm, WitnessBuilder},
             FieldElement, NoirProofScheme,
         },
@@ -126,7 +128,7 @@ mod tests {
     #[test]
     fn test_noir_proof_scheme_serde() {
         let path = PathBuf::from("../../tooling/provekit-bench/benches/poseidon_rounds.json");
-        let proof_schema = NoirProofScheme::from_file(path).unwrap();
+        let proof_schema = NoirProofScheme::<Skyscraper>::from_file(path).unwrap();
 
         test_serde(&proof_schema.r1cs);
         test_serde(&proof_schema.split_witness_builders);

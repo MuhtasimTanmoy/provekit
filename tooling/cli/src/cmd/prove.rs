@@ -1,9 +1,11 @@
 use {
     super::Command,
+    crate::prove,
     anyhow::{Context, Result},
     argh::FromArgs,
     provekit_common::{
-        file::{read, write},
+        file::{read, read_hash_type, write},
+        hash::{Blake3, HashType, Sha2, Sha3, Skyscraper},
         Prover,
     },
     provekit_prover::Prove,
@@ -43,32 +45,15 @@ pub struct Args {
 impl Command for Args {
     #[instrument(skip_all)]
     fn run(&self) -> Result<()> {
-        // Read the scheme
-        let prover: Prover = read(&self.prover_path).context("while reading Provekit Prover")?;
-        let (constraints, witnesses) = prover.size();
-        info!(constraints, witnesses, "Read Noir proof scheme");
+        let hash_type = read_hash_type(&self.prover_path)?;
+        info!(hash_type = ?hash_type, "Hash Type");
 
-        // // Read the input toml
-        // let input_map = scheme.read_witness(&self.input_path)?;
-
-        // Generate the proof
-        let proof = prover
-            .prove(&self.input_path)
-            .context("While proving Noir program statement")?;
-
-        // Verify the proof (not in release build)
-        #[cfg(test)]
-        {
-            let mut verifier: Verifier =
-                read(&self.verifier_path).context("while reading Provekit Verifier")?;
-            verifier
-                .verify(&proof)
-                .context("While verifying Noir proof")?;
+        match hash_type {
+            HashType::Skyscraper => prove!(self, hash_type, Skyscraper),
+            HashType::Sha2 => prove!(self, hash_type, Sha2),
+            HashType::Sha3 => prove!(self, hash_type, Sha3),
+            HashType::Blake3 => prove!(self, hash_type, Blake3),
         }
-
-        // Store the proof to file
-        write(&proof, &self.proof_path).context("while writing proof")?;
-
         Ok(())
     }
 }

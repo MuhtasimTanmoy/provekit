@@ -1,11 +1,16 @@
 use {
     super::Command,
+    crate::verify,
     anyhow::{Context, Result},
     argh::FromArgs,
-    provekit_common::{file::read, Verifier},
+    provekit_common::{
+        file::{read, read_hash_type},
+        hash::{Blake3, HashType, Sha2, Sha3, Skyscraper},
+        Verifier,
+    },
     provekit_verifier::Verify,
     std::path::PathBuf,
-    tracing::instrument,
+    tracing::{info, instrument},
 };
 
 /// Prove a prepared Noir program
@@ -24,18 +29,15 @@ pub struct Args {
 impl Command for Args {
     #[instrument(skip_all)]
     fn run(&self) -> Result<()> {
-        // Read the scheme
-        let mut verifier: Verifier =
-            read(&self.verifier_path).context("while reading Provekit Verifier")?;
+        let hash_type = read_hash_type(&self.verifier_path)?;
+        info!(hash_type = ?hash_type, "Hash Type");
 
-        // Read the proof
-        let proof = read(&self.proof_path).context("while reading proof")?;
-
-        // Verify the proof
-        verifier
-            .verify(&proof)
-            .context("While verifying Noir proof")?;
-
+        match hash_type {
+            HashType::Skyscraper => verify!(self, Skyscraper),
+            HashType::Sha2 => verify!(self, Sha2),
+            HashType::Sha3 => verify!(self, Sha3),
+            HashType::Blake3 => verify!(self, Blake3),
+        }
         Ok(())
     }
 }
